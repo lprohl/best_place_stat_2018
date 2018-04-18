@@ -106,7 +106,7 @@ df <- merge(x=df, y=df_alcohol, by.x = c("country", "xyear"), by.y = c("country"
 df <- merge(x=df, y=df_tobacco, by.x = c("country", "year"), by.y = c("country", "year"), all = TRUE) 
 df <- merge(x=df, y=df_sugar, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 df <- merge(x=df, y=df_life_expectancy, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
-df <- merge(x=df, y=df_kids_mortality, by.x = c("country", "xyear"), by.y = c("country", "year"), all = FALSE) 
+df <- merge(x=df, y=df_kids_mortality, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 df_health <- df
 
 # CHECK FOR FALSE YEAR MERGING - the result should have zero rows
@@ -238,7 +238,9 @@ plot_caption <- "5. Body mass indexes  in 1980-2008 for selected countries, kg p
 df <- df_health %>% 
   filter(best_place_to_live == "check", 
          #Region_Name == "Europe",
-         decade %in% c("1980X", "1990X", "2000X"))
+         decade %in% c("1980X", "1990X", "2000X", "2010X")
+         & body_mass_male > 0
+        )
 df_labels_left  <- df %>% filter(year == 2008 & best_place_to_live == "check")
 df_labels_right <- df %>% filter(year == 1980 & best_place_to_live == "check")
 
@@ -263,7 +265,7 @@ plot_caption <- "5.1 Sugar consumption per person, g per day and BMI avg"
 df <- df_health %>% 
   filter(best_place_to_live == "check", 
          #Region_Name == "Europe",
-         decade %in% c("1990X", "2000X"),
+         decade %in% c("1990X", "2000X", "2010X"),
          sugar > 0
          ) %>% mutate (BMI = (body_mass_male + body_mass_female) / 2)
 df_labels_left  <- df %>% filter(year == 1992 & best_place_to_live == "check")
@@ -291,7 +293,7 @@ ggsave(paste(plot_caption, "png", sep="."),height = 5, width = 8, dpi = 144, uni
 ### V.6. TOBACCO VS ALCOHOL ###########################################
 plot_caption <- "6. Tobacco and alcohol consumption in 2000-2010"
 df <- df_health %>% filter(best_place_to_live == "check", 
-                           decade %in% c("2000X", "2010X"),
+                           decade %in% c("1990X", "2000X", "2010X"),
                            alcohol > 0 & tobacco > 0
     )
 df_labels_left  <- df %>% filter(year == 2010 & best_place_to_live == "check")
@@ -312,6 +314,66 @@ df %>% ggplot(aes(tobacco, alcohol, label = ISO_alpha3_Code, group = country, co
   ggtitle(plot_caption)
   #theme(legend.position = "none")+
   #facet_grid(.~Region_Name)
+ggsave(paste(plot_caption, "png", sep="."),height = 5, width = 8, dpi = 144, units = "in", device='png')
+
+### V.6.1 ALCOHOL LEADERS OVERALL ###########################################
+plot_caption <- "6.1. Alcohol highest consuming countries (avg > 12 or max > 14 l)"
+highest_alcohol_consumption <- df_health %>% filter(decade %in% c("1990X", "2000X", "2010X")) %>% 
+  select(country, alcohol) %>% group_by(country) %>% summarise(mean_alcohol = mean(alcohol, na.rm = TRUE), max_alcohol = max(alcohol, na.rm = TRUE)) %>% 
+  filter(mean_alcohol > 12 | max_alcohol > 14 | country == "Russia")
+
+df <- df_health %>% filter(country %in% as.vector(highest_alcohol_consumption$country), 
+                           decade %in% c("1990X", "2000X", "2010X"),
+                           alcohol > 0 #& tobacco > 0
+                           #& country %in% c("Russia", "Austria", "United Kingdom", "Poland", "Spain")
+)
+df_labels_left  <- df %>% filter(year == 2014 | country == "Estonia" & year == "2010"| country == "Cyprus" & year == "2013")
+df_labels_right <- df %>% filter(year == 2000 | country == "Estonia" & year == "2002")
+
+#%>% mutate (country = reorder(country, -alcohol))
+df %>% ggplot(aes(year, alcohol, label = ISO_alpha3_Code, group = country, color = country, shape = Region_Name, order = year))+
+  #scale_fill_discrete(name="year")+
+  geom_point(size = 3) +
+  geom_path() +
+  scale_color_discrete(name ="Country")+
+  scale_shape_discrete(name ="Region \n name")+
+  geom_label_repel(data = df_labels_left, aes(year, alcohol, label = ISO_alpha3_Code, color = country), label.padding = 0.1, direction = "x")+
+  
+  geom_label_repel(data = df_labels_right, aes(year, alcohol, label = ISO_alpha3_Code, color = country), label.padding = 0.1, direction = "x")+
+  xlab("Year")+
+  ylab("Alcohol consumption per adult, liters (>= 15 years)")+
+  ggtitle(plot_caption)
+#theme(legend.position = "none")+
+#facet_grid(.~Region_Name)
+ggsave(paste(plot_caption, "png", sep="."),height = 5, width = 8, dpi = 144, units = "in", device='png')
+
+
+### V.6.2 TOBACCO LEADERS OVERALL ###########################################
+plot_caption <- "6.2. Tobacco highest consuming countries (avg > 30 or max > 37)"
+highest_tobacco_consumption <- df_health %>% filter(decade %in% c("1990X", "2000X", "2010X")) %>%
+  select(country, tobacco) %>% group_by(country) %>% summarise(mean_tobacco = mean(tobacco, na.rm = TRUE), max_tobacco = max(tobacco, na.rm = TRUE)) %>% 
+  filter(mean_tobacco > 30 | max_tobacco > 37 | country == "Russia"| country == "Austria")
+
+df <- df_health %>% filter(country %in% as.vector(highest_tobacco_consumption$country), 
+                           decade %in% c("1990X", "2000X", "2010X"),
+                           tobacco > 0)
+df_labels_left  <- df %>% filter(year == 2012 | country == "Estonia" & year == "2010"| country == "Cyprus" & year == "2013")
+df_labels_right <- df %>% filter(year == 1990 | country == "Estonia" & year == "2002")
+
+df %>% ggplot(aes(year, tobacco, label = ISO_alpha3_Code, group = country, color = country, shape = Region_Name, order = year))+
+  #scale_fill_discrete(name="year")+
+  geom_point(size = 3) +
+  geom_path() +
+  scale_color_discrete(name ="Country")+
+  scale_shape_discrete(name ="Region \n name")+
+  geom_label_repel(data = df_labels_left, aes(year, tobacco, label = ISO_alpha3_Code, color = country), label.padding = 0.1, direction = "x")+
+  
+  geom_label_repel(data = df_labels_right, aes(year, tobacco, label = ISO_alpha3_Code, color = country), label.padding = 0.1, direction = "x")+
+  xlab("Year")+
+  ylab("Tobacco use, % of adults (>= 15 years)")+
+  ggtitle(plot_caption)
+#theme(legend.position = "none")+
+#facet_grid(.~Region_Name)
 ggsave(paste(plot_caption, "png", sep="."),height = 5, width = 8, dpi = 144, units = "in", device='png')
 
 ### V.7. KIDS MORTALITY ###########################################
