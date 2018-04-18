@@ -46,11 +46,20 @@ df_decades <- readWorksheetFromFile("dimensions/decades.xlsx", sheet = 1)
 
 #df_gdp_per_employee <- loadTransponseXL("economics/indicator_gdp per employee.xlsx", "gdp_per_employee")
 df_gdp_per_capita <- loadTransponseXL("economics/indicator gapminder gdp_per_capita_ppp.xlsx", "gdp_per_capita")
-df_tax_revenue    <- loadTransponseXL("economics/Tax revenue (p of GDP).xlsx", "tax")
+
+# https://data.worldbank.org/indicator/GC.TAX.TOTL.GD.ZS
+df_tax_revenue    <- loadTransponseXL("economics/API_GC.TAX.TOTL.GD.ZS_DS2_en_excel_v2.xls", "tax")
+#df_tax_revenue    <- loadTransponseXL("economics/Tax revenue (p of GDP).xlsx", "tax")
 #df_foreign_invest <- loadTransponseXL("economics/Foreign investment inflow.xlsx", "foreign_investment")
 #df_investment <- loadTransponseXL("economics/Investment.xlsx", "investment")
-df_military       <- loadTransponseXL("economics/military expenditure.xlsx", "military")
-df_government_health_spending_per_capita <- loadTransponseXL("economics/indicator_per capita government expenditure on health (ppp int. $).xlsx", "government_health_spend_per_capita")
+
+# https://data.worldbank.org/indicator/MS.MIL.XPND.GD.ZS?page
+df_military       <- loadTransponseXL("economics/API_MS.MIL.XPND.GD.ZS_DS2_en_excel_v2.xls", "military")
+#df_military       <- loadTransponseXL("economics/military expenditure.xlsx", "military")
+
+# https://data.worldbank.org/indicator/SH.XPD.TOTL.ZS
+df_health_spending <- loadTransponseXL("economics/API_SH.XPD.TOTL.ZS_DS2_en_excel_v.xls", "health_spending")
+#df_government_health_spending_per_capita <- loadTransponseXL("economics/indicator_per capita government expenditure on health (ppp int. $).xlsx", "government_health_spend_per_capita")
 #df_total_health_spending_per_capita <- loadTransponseXL("economics/indicator_per capita total expenditure on health (ppp int. $).xlsx", "total_health_spend_per_capita")
 
 # III.3. loading health data ##########################################
@@ -77,7 +86,7 @@ df <- merge(x=df_region, y=df_decades, all = TRUE)
 df <- merge(x=df, y=df_gdp_per_capita, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 df <- merge(x=df, y=df_tax_revenue, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 df <- merge(x=df, y=df_military, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
-df <- merge(x=df, y=df_government_health_spending_per_capita, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
+df <- merge(x=df, y=df_health_spending, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 #df <- merge(x=df, y=df_total_health_spending_per_capita, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 #df <- merge(x=df, y=df_investment, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
 #df <- merge(x=df, y=df_foreign_invest, by.x = c("country", "xyear"), by.y = c("country", "year"), all = TRUE) 
@@ -185,9 +194,9 @@ df %>% ggplot(aes(jitter(as.numeric(year),factor=1.5), gdp_per_capita, colour = 
   geom_line(data = df_lines, aes(year, gdp_per_capita, group = country))+
   scale_color_discrete(name ="Region")+
   geom_label_repel(data=df_labels_left, aes(year, gdp_per_capita), label.padding = 0.1, 
-                   size=4, direction = "x", label.size = 0.1)+ #, check_overlap = TRUE) + 
+                   size=2.5, direction = "x", label.size = 0.1)+ #, check_overlap = TRUE) + 
   geom_label_repel(data=df_labels_right, aes(year, gdp_per_capita), label.padding = 0.1, 
-                   size=4, direction = "x", label.size = 0.1)+ #, check_overlap = TRUE) + 
+                   size=2.5, direction = "x", label.size = 0.1)+ #, check_overlap = TRUE) + 
   #facet_grid(.~year) + 
   scale_y_continuous(trans="sqrt") + 
   #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
@@ -196,12 +205,12 @@ df %>% ggplot(aes(jitter(as.numeric(year),factor=1.5), gdp_per_capita, colour = 
   xlab("Year")
 ggsave(paste(plot_caption, "png", sep="."),height = 5, width = 8, dpi = 144, units = "in", device='png')
 
-### V.4. TAX, MILITARY VS HEALTH EXPENDITURE IN 2009 ###########################################
-plot_caption <- "4. Tax income, military, and health expenditure of selected countries in 2009"
-df <- df_economics %>% filter(best_place_to_live == "check", year == 2009) %>% mutate(government_health_spend = government_health_spend_per_capita / gdp_per_capita * 100) 
+### V.4. TAX, MILITARY VS HEALTH EXPENDITURE IN 2014 ###########################################
+plot_caption <- "4. Tax income, military, and health expenditure of selected countries in 2014"
+df <- df_economics %>% filter(best_place_to_live == "check", year == 2014)# %>% mutate(health_spending = health_spending / gdp_per_capita * 100) 
 df1 <- df %>% mutate(type = "military", value = military) %>% 
   select(type, value, tax, country, year, Region_Name)
-df2 <- df %>% mutate(type = "health", value = government_health_spend) %>% 
+df2 <- df %>% mutate(type = "health", value = health_spending) %>% 
   select(type, value, tax, country, year, Region_Name)
 df <- union(df1, df2)
 df %>% ggplot(aes(value, tax, label = country, colour = Region_Name, group = type))+
@@ -340,45 +349,3 @@ df %>% ggplot(aes(year, country, fill = life_expectancy, color = Region_Name))+
   xlab("")
 ggsave(paste(plot_caption, "png", sep="."),height = 5, width = 8, dpi = 144, units = "in", device='png')
 
-
-#  geom_point(aes(shape = factor(decade))) + 
-#  scale_x_continuous(trans="log2")+
-#  #geom_text(vjust=0, hjust=0, check_overlap = TRUE) + 
-#  geom_label_repel(data=df_labels_left, aes(kids_mortality, life_expectancy), label.padding = 0.1, 
-#                   size=4, direction = "x", label.size = 0.1) +  #, check_overlap = TRUE) + 
-#  geom_label_repel(data=df_labels_rigth, aes(kids_mortality, life_expectancy), label.padding = 0.1, 
-#                   size=4, direction = "x", label.size = 0.1) #, check_overlap = TRUE) + 
-##facet_grid(Region~.)
-
-#PLOTTING economics
-#value_columns_economics <- c("gdp_per_employee", "gdp_per_capita", "tax", "investment", "military", "government_health_spend_per_capita", "total_health_spend_per_capita")
-#"gdp_per_employee", "tax", ""
-#best_place_to_live == "check"
-#%>% reorder(df_economics.$country, df_economics.$gdp_per_capita, FUN=mean)
-
-
-#xlab, ylab, ggtitle
-
-
-#xlab, ylab, ggtitle
-#c("gdp_per_employee", "gdp_per_capita", "tax", "investment", "military", "government_health_spend_per_capita", "total_health_spend_per_capita")
-
-#df_economics %>% filter(decade %in% c("1980X", "1990X", "2000X")
-#) %>% ggplot(aes(gdp_per_employee, tax, check_overlap = TRUE, colour = five_year))+geom_point() + facet_grid(Region~.)
-
-
-#df_economics %>% filter(best_place_to_live == "check",decade %in% c("1980X", "1990X", "2000X", "2010X")
-#) %>% ggplot(aes(year, investment, colour = country))+geom_line(aes(shape = factor(country))) #+ facet_grid(Region~.)
-
-#df_economics %>% filter(best_place_to_live == "check",decade %in% c("1980X", "1990X", "2000X", "2010X")
-#) %>% ggplot(aes(year, military, colour = country))+geom_line(aes(shape = factor(country))) 
-
-
-#df_invest
-#df_tobacco %>% head()
-
-#read.csv("Investment.csv", header=TRUE)
-#?read.csv
-
-#display.brewer.all(type = "seq")
-#display.brewer.all(type = "div")
